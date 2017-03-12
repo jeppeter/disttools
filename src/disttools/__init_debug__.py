@@ -333,7 +333,7 @@ class release_filter(release_excludes):
         return
 
     def add_replacer(self,origpat,destpat):
-        #logging.info('origpat [%s] destpat [%s]'%(origpat,destpat))
+        self.info('origpat [%s] destpat [%s]'%(origpat,destpat))
         self.__replace[origpat] = destpat
         # we make sure longest match first
         self.__replacekeys = []
@@ -388,7 +388,7 @@ class release_filter(release_excludes):
     def __process_excludes(self,m,callback=None,ctx=None):
         for d in dir(m):
             v = getattr(m,d,None)
-            #logging.info('[%s].%s'%(m.__name__,d))
+            self.info('[%s].%s'%(m.__name__,d))
             if callback is not None:
                 callback(d,v,ctx)
             excluded = False
@@ -402,7 +402,7 @@ class release_filter(release_excludes):
                     s,l=inspect.getsourcelines(v)
                     self.add_pass_lines(d,l,l + len(s))
                 else:
-                    logging.warn('%s not in the call method or function mode'%(d))
+                    self.warn('%s not in the call method or function mode'%(d))
                 continue
             cmdchg = -1
             i = 0
@@ -483,7 +483,7 @@ class release_filter(release_excludes):
                 chgstr = l
                 for p in self.__replacekeys:
                     chgstr = re.sub(p,'%s'%(self.__replace[p]),chgstr)
-                #logging.info('(%s) => (%s) %s'%(l,chgstr,self.__replace.keys()))
+                self.info('(%s) => (%s) %s'%(l,chgstr,self.__replace.keys()))
                 s += '%s\n'%(chgstr)
         return s
 
@@ -576,7 +576,6 @@ class debug_disttools_case(unittest.TestCase):
         if 'TEST_RESERVED' not in os.environ.keys():
             for f in self.__tempfiles:
                 self.__remove_file_safe(f)
-
         self.__tempfiles = []
         return
 
@@ -600,6 +599,9 @@ class debug_disttools_case(unittest.TestCase):
         return tempf
 
     def test_A001(self):
+        outs='''
+
+'''        
         return
 
 def 
