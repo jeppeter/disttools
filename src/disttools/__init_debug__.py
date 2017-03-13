@@ -546,6 +546,8 @@ import unittest
 class debug_disttools_case(unittest.TestCase):
     def setUp(self):
         self.__tempfiles = []
+        self.__adddir=[]
+        self.__loaddir=[]
         return
 
     def __remove_dir(self,dirn,issuper=False):
@@ -553,7 +555,7 @@ class debug_disttools_case(unittest.TestCase):
             cmd = ['sudo','rm','-rf',dirn]
         else:
             cmd = ['rm','-rf',dirn]
-        subprocess.check_call(cmd)
+        subprocess.check_call(cmd)        
         return
 
 
@@ -577,6 +579,7 @@ class debug_disttools_case(unittest.TestCase):
             for f in self.__tempfiles:
                 self.__remove_file_safe(f)
         self.__tempfiles = []
+
         return
 
     @classmethod
@@ -600,8 +603,20 @@ class debug_disttools_case(unittest.TestCase):
 
     def test_A001(self):
         outs='''
+##macrostart
+def call_start():
+    pass
+def call_end():
+    pass
+##macroend
 
-'''        
+def main():
+    pass
+
+'''     
+        tempf = self.__write_tempfile(outs)
+        # now we should add this to the 
+
         return
 
 def 
