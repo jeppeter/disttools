@@ -543,63 +543,80 @@ def release_file(modname='__main__',tofile=None,excludes=[],macros=[],cmdchanges
 ##debugoutstart
 import unittest
 
+
+def make_tempfile(d=None,suffix=None):
+    if suffix is not None:
+        fd,tempf = tempfile.mkstemp(dir=d,suffix=suffix)
+    else:
+        fd,tempf = tempfile.mkstemp(dir=d)
+    os.close(fd)
+    return tempf
+
+def remove_dir_safe(dirn,issuper=False):
+    if issuper:
+        cmd = ['sudo','rm','-rf',dirn]
+    else:
+        cmd = ['rm','-rf',dirn]
+    subprocess.check_call(cmd)        
+    return
+
+
+def remove_file_safe(f=None):
+    if 'TEST_RESERVED' not in os.environ.keys() and f is not None:
+        if os.path.exists(f):
+            if os.path.isdir(f):
+                logging.debug('remove %s'%(f))
+                remove_dir_safe(f)
+            else:
+                logging.debug('remove %s'%(f))
+                os.remove(f)
+        else:
+            logging.debug('[%s] not exists'%(f))
+    else:
+        logging.debug('not remove [%s]'%(f))
+    return
+
+
 class debug_disttools_case(unittest.TestCase):
+    @classmethod
+    def setUpClass(self):
+        self.tempf = make_tempfile(d=None,suffix='.py')
+        pathmod = os.path.dirname(self.tempf)
+        sys.path.insert(0,pathmod)
+        self.modname = os.path.basename(self.tempf)
+        self.modname = re.sub('\.py$','',self.modname)
+        print('call add [%s][%s]'%(self.modname,self.tempf))
+        return
+
+
     def setUp(self):
         self.__tempfiles = []
         self.__adddir=[]
         self.__loaddir=[]
         return
 
-    def __remove_dir(self,dirn,issuper=False):
-        if issuper:
-            cmd = ['sudo','rm','-rf',dirn]
-        else:
-            cmd = ['rm','-rf',dirn]
-        subprocess.check_call(cmd)        
-        return
 
 
-    def __remove_file_safe(self,f=None):
-        if 'TEST_RESERVED' not in os.environ.keys() and f is not None:
-            if os.path.exists(f):
-                if os.path.isdir(f):
-                    logging.debug('remove %s'%(f))
-                    self.__remove_dir(f)
-                else:
-                    logging.debug('remove %s'%(f))
-                    os.remove(f)
-            else:
-                logging.debug('[%s] not exists'%(f))
-        else:
-            logging.debug('not remove [%s]'%(f))
-        return
 
     def tearDown(self):
         if 'TEST_RESERVED' not in os.environ.keys():
             for f in self.__tempfiles:
-                self.__remove_file_safe(f)
+                remove_file_safe(f)
         self.__tempfiles = []
-
         return
 
-    @classmethod
-    def setupClass(cls):
-        return
 
-    @classmethod
-    def tearDownClass(cls):
-        return
-
-    def __write_tempfile(self,s):
-        tempf = make_tempfile()
-        with open(tempf,'wb') as f:
+    def __write_tempfile(self,s,outfile=None):
+        if outfile is None:
+            outfile = make_tempfile()
+        with open(outfile,'wb') as f:
             if sys.version[0] == '2':
                 f.write('%s'%(s))
             else:
                 f.write(s.encode(encoding='UTF-8'))
-        self.__tempfiles.append(tempf)
-        logging.debug('write (%s) [%s]'%(s,tempf))
-        return tempf
+        self.__tempfiles.append(outfile)
+        logging.debug('write (%s) [%s]'%(s,outfile))
+        return outfile
 
     def test_A001(self):
         outs='''
@@ -612,13 +629,23 @@ def call_end():
 
 def main():
     pass
-
-'''     
+'''
+        print('call A001')
         tempf = self.__write_tempfile(outs)
         # now we should add this to the 
 
         return
 
-def 
+    @classmethod
+    def tearDownClass(self):
+        remove_file_safe(self.tempf)
+        return
+
+
+def main():
+    unittest.main()
+
+if __name__ == '__main__':
+    main()
 
 ##debugoutend
