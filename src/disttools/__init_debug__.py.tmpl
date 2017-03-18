@@ -180,42 +180,7 @@ def get_tempd():
     return '/tmp'
 
 copyfile_python_command='''
-import sys
-import time
-import os
-
-def make_dir_safe(dirtomake):
-    try:
-        if dirtomake is not None and len(dirtomake) > 0:
-            os.makedirs(dirtomake)
-    except OSError  as e:
-        if not os.path.exists(dirtomake):
-            raise e
-
-def copy_file(fromfile,tofile,touchfile=None):
-    tod = os.path.dirname(tofile)
-    make_dir_safe(tod)
-    fin = open(fromfile,'r')
-    fout = open(tofile,'w+')
-    for l in fin:
-        fout.write('%s'%(l))
-    fin.close()
-    fout.close()
-    if touchfile is not None:
-        touchd = os.path.dirname(touchfile)
-        make_dir_safe(touchd)
-        touchf = open(touchfile,'w')
-        touchf.close()
-    return
-
-def main():
-    time.sleep(1.0)
-    copy_file(sys.argv[1],sys.argv[2],sys.argv[3])
-    sys.exit(0)
-    return
-
-if __name__ == '__main__':
-    main()
+%COPYFILE_PYTHON%
 '''
 
 def __get_tab_line(fmt,tabs=0):
@@ -594,8 +559,6 @@ class debug_disttools_case(unittest.TestCase):
         self.__adddir=[]
         self.__loaddir=[]
         return
-
-
 
 
     def tearDown(self):
