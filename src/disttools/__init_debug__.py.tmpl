@@ -189,7 +189,7 @@ def __get_tab_line(fmt,tabs=0):
     s += '\n'
     return s
 
-def release_copy_own(tempf,tofile=None):
+def release_copy_own(tempf,tofile=None,timewait=None):
     cmd =''
     runcmd = ''
     if tofile is None:
@@ -202,7 +202,10 @@ def release_copy_own(tempf,tofile=None):
     cmd += __get_tab_line(r'#! /usr/bin/env python')
     cmd += copyfile_python_command
     pythonfile = os.path.abspath(pythonfile)
-    runcmd = 'python %s %s %s %s'%(pythonfile,tempf,tofile,touchfile)
+    if timewait is None:
+        runcmd = 'python %s --pid %d --touch "%s" "%s"  "%s"'%(pythonfile,os.getpid(),touchfile,tempf,tofile)
+    else:
+        runcmd = 'python %s --wait %s --touch "%s" "%s" "%s"'%(pythonfile,timewait,touchfile,tempf,tofile)
     with open(pythonfile,'w+') as f:
         #logging.info('cmd %s'%(cmd))
         f.write(cmd)
@@ -494,7 +497,7 @@ def release_write_tempfile(s):
     return writetemp
 
 
-def release_file(modname='__main__',tofile=None,excludes=[],macros=[],cmdchanges=[],repls=dict(),checkcall=None,ctx=None):
+def release_file(modname='__main__',tofile=None,excludes=[],macros=[],cmdchanges=[],repls=dict(),checkcall=None,ctx=None,timewait=None):
     if modname is None:
         modname = '__main__'
     m = importlib.import_module(modname)
@@ -502,7 +505,7 @@ def release_file(modname='__main__',tofile=None,excludes=[],macros=[],cmdchanges
     s = release_get_output(m,excludes,macros,cmdchanges,repls,checkcall,ctx)
     # now we should get the file
     writetemp = release_write_tempfile(s)
-    return release_copy_own(writetemp,tofile)
+    return release_copy_own(writetemp,tofile,timewait)
 
 
 ##debugoutstart
@@ -550,7 +553,7 @@ class debug_disttools_case(unittest.TestCase):
         sys.path.insert(0,pathmod)
         self.modname = os.path.basename(self.tempf)
         self.modname = re.sub('\.py$','',self.modname)
-        print('call add [%s][%s]'%(self.modname,self.tempf))
+        self.loadmod = None
         return
 
 
@@ -572,12 +575,12 @@ class debug_disttools_case(unittest.TestCase):
     def __write_tempfile(self,s,outfile=None):
         if outfile is None:
             outfile = make_tempfile()
+            self.__tempfiles.append(outfile)
         with open(outfile,'wb') as f:
             if sys.version[0] == '2':
                 f.write('%s'%(s))
             else:
                 f.write(s.encode(encoding='UTF-8'))
-        self.__tempfiles.append(outfile)
         logging.debug('write (%s) [%s]'%(s,outfile))
         return outfile
 
@@ -593,9 +596,16 @@ def call_end():
 def main():
     pass
 '''
-        print('call A001')
-        tempf = self.__write_tempfile(outs)
-        # now we should add this to the 
+        self.__write_tempfile(outs,self.tempf)
+        if self.modname not in sys.modules.keys():
+            importlib.import_module(self.modname)
+        else:
+            reload(sys.modules[self.modname])
+        tempf = self.__write_tempfile('')
+
+
+
+
 
         return
 
