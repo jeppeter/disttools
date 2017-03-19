@@ -578,7 +578,7 @@ class debug_disttools_case(unittest.TestCase):
 
     def __write_tempfile(self,s,outfile=None):
         if outfile is None:
-            outfile = make_tempfile()
+            outfile = make_tempfile(d=None,suffix='.py')
             self.__tempfiles.append(outfile)
         with open(outfile,'wb') as f:
             if sys.version[0] == '2':
@@ -673,23 +673,45 @@ def main():
 def main():
     pass
 '''
-        self.__write_tempfile(outs,self.tempf)
-        if self.modname not in sys.modules.keys():
-            importlib.import_module(self.modname)
-        else:
-            reload(sys.modules[self.modname])
-        tempf = self.__write_tempfile('')
-        release_file(modname=self.modname,tofile=tempf,excludes=[],macros=[['##macrostart','##macroend']],cmdchanges=[],repls=dict(),checkcall=None,ctx=None,timewait=0.1)
-        touchfile = '%s.touched'%(tempf)
+        srctempf = self.__write_tempfile(outs)
+        dsttempf = self.__write_tempfile('')
+        cmds = []
+        cmds.append('%s'%(sys.executable))
+        cmds.append(__file__)
+        cmds.append('releasefile')
+        if 'DISTTOOLS_LOGLVL' in os.environ.keys():
+            verbose = '-'
+            verbose += 'v' * int(os.environ['DISTTOOLS_LOGLVL'])
+            cmds.append(verbose)
+        cmds.append('--macros')
+        cmds.append('##macrostart,##macroend')
+        cmds.append('--timewait')
+        cmds.append('3.0')
+        cmds.append('--waitpid')
+        cmds.append(srctempf)
+        cmds.append(dsttempf)
+        cmdin = ''
+        for c in cmds:
+            if len(cmdin) > 0 :
+                cmdin += ' '
+            cmdin += '"%s"'%(c)
+        copyenv = os.environ.copy()
+        if 'DISTTOOLS_LOGLVL' in copyenv.keys():
+            del copyenv['DISTTOOLS_LOGLVL']
+        if 'DISTTOOLS_LOGFMT' in copyenv.keys():
+            del copyenv['DISTTOOLS_LOGFMT']
         stime = time.time()
+        retval = subprocess.call(cmdin,shell=True,stdin=None,stdout=None,stderr=None,env=copyenv)
+        self.assertEqual(retval,0)        
+        touchfile = '%s.touched'%(dsttempf)
         while not os.path.isfile(touchfile) :
             time.sleep(0.1)
         ctime = time.time()
-        # we should make sure this is ok
-        self.assertTrue( (ctime - stime) < 0.4)
+        # we should wait for at least time
+        self.assertTrue( (ctime - stime) > 2.99)
         # now to get the code
         lines = []
-        with open(tempf,'rb') as fin:
+        with open(dsttempf,'rb') as fin:
             for l in fin:
                 if sys.version[0] == '2':
                     rl = l
@@ -701,7 +723,7 @@ def main():
         sarr = re.split('\n',results)
         for l in sarr:
             reslines.append('%s\n'%(l))
-        self.__equal_lines(reslines,lines,'test_A001')
+        self.__equal_lines(reslines,lines,'test_A002')
         return
 
 
@@ -725,18 +747,19 @@ def set_log_level(args):
 
 
 def test_handler(args,parser):
-    set_log_level(args)    
+    set_log_level(args)
     sys.argv[1:] = args.subnargs
     unittest.main(verbosity=args.verbose,failfast=args.failfast)
     return
 
 
 def releasefile_handler(args,parser):
-    set_log_level(args)
+    set_log_level(args)    
     infile = args.subnargs[0]
     outfile = None
     if len(args.subnargs) > 1:
         outfile = args.subnargs[1]
+    logging.debug('infile [%s] outfile [%s]'%(infile,outfile))
     # now we should insert the path
     indir = os.path.realpath(os.path.dirname(infile))
     if indir == '':
@@ -747,6 +770,7 @@ def releasefile_handler(args,parser):
         # to make in the first not ok
         sys.path.remove(indir)
         sys.path.insert(0,indir)
+    logging.debug('sys.path (%s)'%(sys.path))
     filename , extension = os.path.splitext(infile)
     modname = os.path.basename(filename)
     timewait = args.timewait
@@ -787,9 +811,6 @@ def main():
         "repls|r" : [],
         "cmdchanges|C" : [],        
         "test<test_handler>" : {
-            "$" : "*"
-        },
-        "run<run_handler>" : {
             "$" : "*"
         },
         "release<release_handler>" : {
