@@ -589,11 +589,25 @@ class debug_disttools_case(unittest.TestCase):
         return outfile
 
     def __equal_lines(self,als,bls,notice):
-        self.assertEqual(len(als),len(bls))
-        idx = 0
-        while idx < len(als):
-            self.assertEqual(als[idx].rstrip('\r\n'),bls[idx].rstrip('\r\n'))
-            idx += 1
+        aidx = 0
+        bidx = 0
+        while aidx < len(als):
+            if als[aidx].rstrip('\r\n') == '':
+                aidx += 1
+                continue
+            while bls[bidx].rstrip('\r\n') == '':
+                bidx += 1
+            self.assertEqual(als[aidx].rstrip('\r\n'),bls[bidx].rstrip('\r\n'))
+            aidx += 1
+            bidx += 1
+        while aidx < len(als):
+            self.assertEqual(als[aidx].rstrip('\r\n'),'')
+            aidx += 1
+        while bidx < len(bls):
+            self.assertEqual(bls[bidx].rstrip('\r\n'),'')
+            bidx += 1
+        self.assertEqual(aidx,len(als))
+        self.assertEqual(bidx,len(bls))
         return
 
     def test_A001(self):
@@ -634,18 +648,62 @@ def main():
                     rl = l
                 else:
                     rl = l.decode(encoding='UTF-8')
-                if rl.rstrip('\r\n') == '':
-                    continue
                 lines.append(l)
 
         reslines = []
         sarr = re.split('\n',results)
         for l in sarr:
-            if l.rstrip('\r\n') == '':
-                continue
             reslines.append('%s\n'%(l))
         self.__equal_lines(reslines,lines,'test_A001')
         return
+
+    def test_A002(self):
+        outs='''
+##macrostart
+def call_start():
+    pass
+def call_end():
+    pass
+##macroend
+
+def main():
+    pass
+'''
+        results='''
+def main():
+    pass
+'''
+        self.__write_tempfile(outs,self.tempf)
+        if self.modname not in sys.modules.keys():
+            importlib.import_module(self.modname)
+        else:
+            reload(sys.modules[self.modname])
+        tempf = self.__write_tempfile('')
+        release_file(modname=self.modname,tofile=tempf,excludes=[],macros=[['##macrostart','##macroend']],cmdchanges=[],repls=dict(),checkcall=None,ctx=None,timewait=0.1)
+        touchfile = '%s.touched'%(tempf)
+        stime = time.time()
+        while not os.path.isfile(touchfile) :
+            time.sleep(0.1)
+        ctime = time.time()
+        # we should make sure this is ok
+        self.assertTrue( (ctime - stime) < 0.4)
+        # now to get the code
+        lines = []
+        with open(tempf,'rb') as fin:
+            for l in fin:
+                if sys.version[0] == '2':
+                    rl = l
+                else:
+                    rl = l.decode(encoding='UTF-8')
+                lines.append(l)
+
+        reslines = []
+        sarr = re.split('\n',results)
+        for l in sarr:
+            reslines.append('%s\n'%(l))
+        self.__equal_lines(reslines,lines,'test_A001')
+        return
+
 
     @classmethod
     def tearDownClass(self):
@@ -672,17 +730,45 @@ def test_handler(args,parser):
     unittest.main(verbosity=args.verbose,failfast=args.failfast)
     return
 
-def run_handler(args,parser):
+
+def releasefile_handler(args,parser):
     set_log_level(args)
-    cmdin = ''
-    for c in args.subnargs:
-        if len(cmdin) > 0:
-            cmdin += ' '
-        cmdin += '"%s"'%(c)
-    p = subprocess.Popen(cmdin,shell=True,stdin=None,stdout=None,stderr=None)
-    if args.timewait > 0.001:
+    infile = args.subnargs[0]
+    outfile = None
+    if len(args.subnargs) > 1:
+        outfile = args.subnargs[1]
+    # now we should insert the path
+    indir = os.path.realpath(os.path.dirname(infile))
+    if indir == '':
+        indir = os.path.realpath('.')
+    if indir not in sys.path:
+        sys.path.insert(0,indir)
+    else:
+        # to make in the first not ok
+        sys.path.remove(indir)
+        sys.path.insert(0,indir)
+    filename , extension = os.path.splitext(infile)
+    modname = os.path.basename(filename)
+    timewait = args.timewait
+    if args.waitpid:
+        timewait = None
+    excludes = args.excludes
+    repls = dict()
+    if len(args.repls) > 0:
+        for c in args.repls:
+            sarr = re.split('=',c,1)
+            repls[sarr[0]] = sarr[1]
+    cmdchanges = args.cmdchanges
+    macros = []
+    if len(args.macros) > 0:
+        for m in args.macros:
+            sarr = re.split(',',m)
+            if len(sarr) <= 1 or len(sarr) > 2:
+                raise Exception('macro [%s] not split tow by ,'%(m))
+            macros.append([sarr[0],sarr[1]])
+    release_file(modname,outfile,excludes,macros,cmdchanges,repls,None,None,timewait)
+    if (args.timewait ) > 0.001:
         time.sleep(args.timewait)
-    p = None
     sys.exit(0)
     return
 
@@ -695,6 +781,11 @@ def main():
         "verbose|v" : "+",
         "failfast|f" : false,
         "timewait|t" : 0.0,
+        "waitpid|w" : false,
+        "macros|m" : [],
+        "excludes|e" : [],
+        "repls|r" : [],
+        "cmdchanges|C" : [],        
         "test<test_handler>" : {
             "$" : "*"
         },
@@ -702,7 +793,11 @@ def main():
             "$" : "*"
         },
         "release<release_handler>" : {
+
             "$" : 0
+        },
+        "releasefile<releasefile_handler>" : {
+            "$" : "+"
         }
     }
     '''
