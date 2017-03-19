@@ -548,6 +548,15 @@ def remove_file_safe(f=None):
         logging.debug('not remove [%s]'%(f))
     return
 
+def make_dir_safe(dname=None):
+    if dname is not None:
+        if not os.path.isdir(dname):
+            try:
+                os.makedirs(dname)
+            except:
+                pass
+            if not os.path.isdir(dname):
+                raise Exception('can not make [%s]'%(dname))
 
 class debug_disttools_case(unittest.TestCase):
     @classmethod
@@ -797,7 +806,35 @@ def releasefile_handler(args,parser):
     return
 
 def release_handler(args,parser):
-    raise Exception('not supported release')
+    set_log_level(args)
+    topdir = os.path.realpath(os.path.join(os.path.dirname(__file__),'..','..'))
+    dstfile = os.path.join(topdir,'disttools','__init__.py')
+    make_dir_safe(os.path.join(topdir,'disttools'))
+    versionfile = os.path.join(topdir,'VERSION')
+    versionstr = ''
+    with open(versionfile,'r') as fin:
+        for l in fin:
+            versionstr += l
+    versionstr = versionstr.rstrip('\r\n')
+    sarr = re.split('\.',versionstr)
+    if len(sarr) < 3:
+        raise Exception('version must be 3 items')
+    idx = 0
+    versiontuplestr = ''
+    versiontuplestr += '('
+    for c in sarr:
+        if idx > 0:
+            versiontuplestr += ','
+        versiontuplestr += '%s'%(c)
+        idx += 1
+    versiontuplestr += ')'
+    replsdict = dict()
+    replsdict['"VERSIONNUMBER"'] = '\'%s\''%(versionstr)
+    replsdict['"VERSIONINFO"'] = '%s'%(versiontuplestr)
+
+    release_file(None,dstfile,excludes=[],macros=[['##debugoutstart','##debugoutend']],cmdchanges=[],repls=replsdict,timewait=None)
+    sys.exit(0)
+    return
 
 def main():
     commandline='''
