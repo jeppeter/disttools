@@ -53,14 +53,28 @@ def write_file(s,outfile=None):
 	fout = None
 	return
 
+def set_log_level(args):
+    loglvl= logging.ERROR
+    if args.verbose >= 3:
+        loglvl = logging.DEBUG
+    elif args.verbose >= 2:
+        loglvl = logging.INFO
+    elif args.verbose >= 1 :
+        loglvl = logging.WARN
+    # we delete old handlers ,and set new handler
+    logging.basicConfig(level=loglvl,format='%(asctime)s:%(filename)s:%(funcName)s:%(lineno)d\t%(message)s')
+    return
+
 
 def pythonpython_handler(args,parser):
+	set_log_level(args)
 	repls = ''
 	for f in args.subnargs:
 		repls += read_file(f)
 	repls = __get_python_python(repls)
 	outs = read_file(args.input)
 	outs = outs.replace(args.pattern,repls)
+	logging.debug('write [%s] (%s)'%(args.output,outs))
 	write_file(outs,args.output)
 	sys.exit(0)
 	return

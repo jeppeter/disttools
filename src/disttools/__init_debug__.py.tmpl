@@ -160,8 +160,11 @@ class FilterSource(_LoggerObject):
         return s
 
 def release_runcmd(cmd):
+    plog = _LoggerObject('disttools')
+    plog.debug('run cmd [%s]'%(cmd))
     #logging.info('runcmd (%s)'%(cmd))
     p = subprocess.Popen(cmd,shell=True)
+    plog = None
     return p
 
 def get_tempd():
@@ -510,7 +513,8 @@ def release_file(modname='__main__',tofile=None,excludes=[],macros=[],cmdchanges
 
 ##debugoutstart
 import unittest
-
+import extargsparse
+import time
 
 def make_tempfile(d=None,suffix=None):
     if suffix is not None:
@@ -584,6 +588,14 @@ class debug_disttools_case(unittest.TestCase):
         logging.debug('write (%s) [%s]'%(s,outfile))
         return outfile
 
+    def __equal_lines(self,als,bls,notice):
+        self.assertEqual(len(als),len(bls))
+        idx = 0
+        while idx < len(als):
+            self.assertEqual(als[idx].rstrip('\r\n'),bls[idx].rstrip('\r\n'))
+            idx += 1
+        return
+
     def test_A001(self):
         outs='''
 ##macrostart
@@ -596,17 +608,43 @@ def call_end():
 def main():
     pass
 '''
+        results='''
+def main():
+    pass
+'''
         self.__write_tempfile(outs,self.tempf)
         if self.modname not in sys.modules.keys():
             importlib.import_module(self.modname)
         else:
             reload(sys.modules[self.modname])
         tempf = self.__write_tempfile('')
+        release_file(modname=self.modname,tofile=tempf,excludes=[],macros=[['##macrostart','##macroend']],cmdchanges=[],repls=dict(),checkcall=None,ctx=None,timewait=0.1)
+        touchfile = '%s.touched'%(tempf)
+        stime = time.time()
+        while not os.path.isfile(touchfile) :
+            time.sleep(0.1)
+        ctime = time.time()
+        # we should make sure this is ok
+        self.assertTrue( (ctime - stime) < 0.4)
+        # now to get the code
+        lines = []
+        with open(tempf,'rb') as fin:
+            for l in fin:
+                if sys.version[0] == '2':
+                    rl = l
+                else:
+                    rl = l.decode(encoding='UTF-8')
+                if rl.rstrip('\r\n') == '':
+                    continue
+                lines.append(l)
 
-
-
-
-
+        reslines = []
+        sarr = re.split('\n',results)
+        for l in sarr:
+            if l.rstrip('\r\n') == '':
+                continue
+            reslines.append('%s\n'%(l))
+        self.__equal_lines(reslines,lines,'test_A001')
         return
 
     @classmethod
@@ -614,9 +652,65 @@ def main():
         remove_file_safe(self.tempf)
         return
 
+def set_log_level(args):
+    loglvl= logging.ERROR
+    if args.verbose >= 3:
+        loglvl = logging.DEBUG
+    elif args.verbose >= 2:
+        loglvl = logging.INFO
+    elif args.verbose >= 1 :
+        loglvl = logging.WARN
+    # we delete old handlers ,and set new handler
+    logging.basicConfig(level=loglvl,format='%(asctime)s:%(filename)s:%(funcName)s:%(lineno)d\t%(message)s')
+    os.environ['DISTTOOLS_LOGLVL'] = '%s'%(args.verbose)
+    return
+
+
+def test_handler(args,parser):
+    set_log_level(args)    
+    sys.argv[1:] = args.subnargs
+    unittest.main(verbosity=args.verbose,failfast=args.failfast)
+    return
+
+def run_handler(args,parser):
+    set_log_level(args)
+    cmdin = ''
+    for c in args.subnargs:
+        if len(cmdin) > 0:
+            cmdin += ' '
+        cmdin += '"%s"'%(c)
+    p = subprocess.Popen(cmdin,shell=True,stdin=None,stdout=None,stderr=None)
+    if args.timewait > 0.001:
+        time.sleep(args.timewait)
+    p = None
+    sys.exit(0)
+    return
+
+def release_handler(args,parser):
+    raise Exception('not supported release')
 
 def main():
-    unittest.main()
+    commandline='''
+    {
+        "verbose|v" : "+",
+        "failfast|f" : false,
+        "timewait|t" : 0.0,
+        "test<test_handler>" : {
+            "$" : "*"
+        },
+        "run<run_handler>" : {
+            "$" : "*"
+        },
+        "release<release_handler>" : {
+            "$" : 0
+        }
+    }
+    '''
+    parser = extargsparse.ExtArgsParse(None,priority=[])
+    parser.load_command_line_string(commandline)
+    args = parser.parse_command_line(None,parser)
+    raise Exception('[%s] not supported'%(args.subcommand))
+    return
 
 if __name__ == '__main__':
     main()
