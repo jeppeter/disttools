@@ -652,7 +652,7 @@ def main():
             time.sleep(0.1)
         ctime = time.time()
         # we should make sure this is ok
-        self.assertTrue( (ctime - stime) < 0.4)
+        self.assertTrue( (ctime - stime) < 1.0)
         # now to get the code
         lines = []
         with open(tempf,'rb') as fin:
