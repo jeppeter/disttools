@@ -11,7 +11,7 @@ if -%PYTHON%- == -- (
 %PYTHON% %script_dir%pyinsert.py -i %script_dir%echo.py.tmpl pythonpython %script_dir%src\%packagename%\copyfile.py | %PYTHON% | %PYTHON% %script_dir%pydiff.py %script_dir%src\%packagename%\copyfile.py -
 
 if NOT %errorlevel% == 0 (
-	echo "can not make copyfile" 
+	echo "can not make copyfile" >&2
 	goto :error
 )
 
