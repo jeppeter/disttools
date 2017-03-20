@@ -516,6 +516,8 @@ import unittest
 import extargsparse
 import time
 
+
+##handleoutstart
 def make_tempfile(d=None,suffix=None):
     if suffix is not None:
         fd,tempf = tempfile.mkstemp(dir=d,suffix=suffix)
@@ -557,6 +559,8 @@ def make_dir_safe(dname=None):
                 pass
             if not os.path.isdir(dname):
                 raise Exception('can not make [%s]'%(dname))
+
+##handleoutend
 
 class debug_disttools_case(unittest.TestCase):
     @classmethod
@@ -689,9 +693,11 @@ def main():
         cmds.append(__file__)
         cmds.append('releasefile')
         if 'DISTTOOLS_LOGLVL' in os.environ.keys():
-            verbose = '-'
-            verbose += 'v' * int(os.environ['DISTTOOLS_LOGLVL'])
-            cmds.append(verbose)
+            intval = int(os.environ['DISTTOOLS_LOGLVL'])
+            if intval > 0:
+                verbose = '-'
+                verbose += 'v' * int(os.environ['DISTTOOLS_LOGLVL'])
+                cmds.append(verbose)
         cmds.append('--macros')
         cmds.append('##macrostart,##macroend')
         cmds.append('--timewait')
@@ -761,7 +767,7 @@ def test_handler(args,parser):
     unittest.main(verbosity=args.verbose,failfast=args.failfast)
     return
 
-
+##handleoutstart
 def releasefile_handler(args,parser):
     set_log_level(args)    
     infile = args.subnargs[0]
@@ -804,6 +810,7 @@ def releasefile_handler(args,parser):
         time.sleep(args.timewait)
     sys.exit(0)
     return
+##handleoutend
 
 def release_handler(args,parser):
     set_log_level(args)
@@ -851,7 +858,6 @@ def main():
             "$" : "*"
         },
         "release<release_handler>" : {
-
             "$" : 0
         },
         "releasefile<releasefile_handler>" : {
