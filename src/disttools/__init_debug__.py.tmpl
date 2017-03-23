@@ -517,6 +517,7 @@ import extargsparse
 import time
 
 
+
 ##handleoutstart
 def make_tempfile(d=None,suffix=None):
     if suffix is not None:
@@ -526,12 +527,24 @@ def make_tempfile(d=None,suffix=None):
     os.close(fd)
     return tempf
 
+def make_tempdir(d=None):
+    retd = tempfile.mkdtemp(dir=d)
+    return retd
+    
+
 def remove_dir_safe(dirn,issuper=False):
+    plat = sys.platform.lower()
     if issuper:
-        cmd = ['sudo','rm','-rf',dirn]
+        if plat != 'win32':
+            cmd = 'sudo rm -rf "%s"'%(dirn)
+        else:
+            cmd = 'rmdir /s /q "%s"'%(dirn)
     else:
-        cmd = ['rm','-rf',dirn]
-    subprocess.check_call(cmd)        
+        if plat != 'win32':
+            cmd = 'rm -rf "%s"'%(dirn)
+        else:
+            cmd = 'rmdir /s /q "%s"'%(dirn)
+    subprocess.check_call(cmd,shell=True)
     return
 
 
@@ -643,7 +656,10 @@ def main():
         if self.modname not in sys.modules.keys():
             importlib.import_module(self.modname)
         else:
-            reload(sys.modules[self.modname])
+            if sys.version[0] == '2':
+                reload(sys.modules[self.modname])
+            else:
+                importlib.reload(sys.modules[self.modname])
         tempf = self.__write_tempfile('')
         release_file(modname=self.modname,tofile=tempf,excludes=[],macros=[['##macrostart','##macroend']],cmdchanges=[],repls=dict(),checkcall=None,ctx=None,timewait=0.1)
         touchfile = '%s.touched'%(tempf)
@@ -739,6 +755,61 @@ def main():
         for l in sarr:
             reslines.append('%s\n'%(l))
         self.__equal_lines(reslines,lines,'test_A002')
+        return
+
+
+    def test_A003(self):
+        outs='''
+##macrostart
+def call_start():
+    pass
+def call_end():
+    pass
+##macroend
+
+def main():
+    pass
+'''
+        results='''
+def main():
+    pass
+'''
+        self.__write_tempfile(outs,self.tempf)
+        if self.modname not in sys.modules.keys():
+            importlib.import_module(self.modname)
+        else:
+            if sys.version[0] == '2':
+                reload(sys.modules[self.modname])
+            else:
+                importlib.reload(sys.modules[self.modname])
+        firstd = make_tempdir()
+        secd = make_tempdir(firstd)
+        tempf = make_tempfile(secd,suffix='.py')
+        # we make sure this is the directory
+        remove_dir_safe(firstd)
+        release_file(modname=self.modname,tofile=tempf,excludes=[],macros=[['##macrostart','##macroend']],cmdchanges=[],repls=dict(),checkcall=None,ctx=None,timewait=0.1)
+        touchfile = '%s.touched'%(tempf)
+        stime = time.time()
+        while not os.path.isfile(touchfile) :
+            time.sleep(0.1)
+        ctime = time.time()
+        # we should make sure this is ok
+        self.assertTrue( (ctime - stime) < 1.0)
+        # now to get the code
+        lines = []
+        with open(tempf,'rb') as fin:
+            for l in fin:
+                if sys.version[0] == '2':
+                    rl = l
+                else:
+                    rl = l.decode(encoding='UTF-8')
+                lines.append(rl)
+        reslines = []
+        sarr = re.split('\n',results)
+        for l in sarr:
+            reslines.append('%s\n'%(l))
+        self.__equal_lines(reslines,lines,'test_A001')
+        remove_dir_safe(firstd)
         return
 
 

@@ -8,8 +8,22 @@ import subprocess
 import re
 import os
 
+def make_dir_safe(d=None):
+	if d is not None:
+		if not os.path.isdir(d):
+			try:
+				os.makedirs(d)
+			except:
+				pass
+		if not os.path.isdir(d):
+			raise Exception('can not mkdir [%s]'%(d))
+
 def copy_file(fromfile,tofile):
 	fin = open(fromfile,'rb')
+	dname = os.path.dirname(tofile)
+	if len(dname) == 0:
+		dname = '.'
+	make_dir_safe(dname)
 	fout = open(tofile,'wb')
 
 	for l in fin:
