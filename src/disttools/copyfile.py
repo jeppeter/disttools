@@ -36,7 +36,10 @@ def copy_file(fromfile,tofile):
 
 def touch_file(outfile):
 	with open(outfile,'wb') as fout:
-		fout.write('')
+		if sys.version[0] == '2':
+			fout.write('')
+		else:
+			fout.write(b'')
 	return
 
 def trans_to_string(s):
