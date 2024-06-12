@@ -1,13 +1,15 @@
 #! /bin/bash
 
-_script_file=`python -c "import os;import sys;sys.stdout.write('%s'%(os.path.realpath(sys.argv[1])))" $0`
-script_dir=`dirname $_script_file`
-packagename=disttools
-
 if [ -z "$PYTHON" ]
 	then
 	export PYTHON=python
 fi
+
+
+_script_file=`$PYTHON -c "import os;import sys;sys.stdout.write('%s'%(os.path.realpath(sys.argv[1])))" $0`
+script_dir=`dirname $_script_file`
+packagename=disttools
+
 
 wait_file_until()
 {

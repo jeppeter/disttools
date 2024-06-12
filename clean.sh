@@ -1,6 +1,12 @@
 #! /bin/bash
 
-_script_file=`python -c "import sys;import os;print('%s'%(os.path.abspath(sys.argv[1])));" "$0"`
+if [ -z "$PYTHON" ]
+	then
+	export PYTHON=python
+fi
+
+
+_script_file=`$PYTHON -c "import sys;import os;print('%s'%(os.path.abspath(sys.argv[1])));" "$0"`
 script_dir=`dirname $_script_file`
 packagename=disttools
 
