@@ -61,7 +61,7 @@ def __find_pid_win32(pid):
 	p = subprocess.Popen(cmds,stdin=None,stdout=subprocess.PIPE,stderr=devnullfd,shell=True,env=None)
 	res = False
 	idx = 0
-	intexpr = re.compile('^([\d]+)$')
+	intexpr = re.compile('^([\\d]+)$')
 	if p.stdout is not None:
 		for line in iter(p.stdout.readline, b''):
 			idx += 1
@@ -95,7 +95,7 @@ def __find_pid_unix_cmd(pid,cmds):
 	devnullfd = open(os.devnull,'w')
 	p = subprocess.Popen(cmds,stdin=None,stdout=subprocess.PIPE,stderr=devnullfd,shell=True,env=None)
 	res = False
-	intexpr = re.compile('^\s+([\d]+)\s+.*')
+	intexpr = re.compile('^\\s+([\\d]+)\\s+.*')
 	idx = 0
 	if p.stdout is not None:
 		for line in iter(p.stdout.readline, b''):

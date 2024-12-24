@@ -585,7 +585,7 @@ class debug_disttools_case(unittest.TestCase):
         pathmod = os.path.dirname(self.tempf)
         sys.path.insert(0,pathmod)
         self.modname = os.path.basename(self.tempf)
-        self.modname = re.sub('\.py$','',self.modname)
+        self.modname = re.sub('\\.py$','',self.modname)
         self.loadmod = None
         return
 
@@ -897,7 +897,7 @@ def release_handler(args,parser):
         for l in fin:
             versionstr += l
     versionstr = versionstr.rstrip('\r\n')
-    sarr = re.split('\.',versionstr)
+    sarr = re.split('\\.',versionstr)
     if len(sarr) < 3:
         raise Exception('version must be 3 items')
     idx = 0
